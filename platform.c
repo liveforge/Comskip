@@ -9,6 +9,11 @@ BOOL AnsiToUnicode16(const char *in_Src, WCHAR *out_Dst, INT in_MaxLen)
     // do NOT decrease maxlen for the eos
     if (in_MaxLen <= 0)
         return FALSE;
+    // validate input pointer
+    if (in_Src == NULL) {
+        out_Dst[0] = 0;
+        return FALSE;
+    }
     // let windows find out the meaning of ansi
     // - the SrcLen=-1 triggers MBTWC to add a eos to Dst and fails if MaxLen is too small.
     // - if SrcLen is specified then no eos is added

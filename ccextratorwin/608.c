@@ -154,7 +154,11 @@ void correct_case (int line_num, struct eia608_screen *data)
 			// preceded by space, and end of line or followed by
 			// space)
 			unsigned char prev= (c==(char *) data->characters[line_num])?' ':*(c-1);
-			unsigned char next=*(c+len);
+			unsigned char next;
+			if (c+len >= (char *) data->characters[line_num]+32)
+				next = ' ';  // treat end-of-buffer as separator
+			else
+				next = *(c+len);
 			if ( ISSEPARATOR(prev) && ISSEPARATOR(next))
 			{
 				memcpy (c,spell_correct[i],len);
@@ -399,7 +403,7 @@ void write_subtitle_file_footer (struct s_write *wb)
     switch (write_format)
     {
         case OF_SAMI:
-            sprintf ((char *) str,"<BODY><SAMI>\n");
+            snprintf ((char *) str, sizeof(str), "<BODY><SAMI>\n");
             if (debug_608 && encoding!=ENC_UNICODE)
             {
                 printf ("\r%s\n", str);
@@ -459,10 +463,10 @@ int write_cc_buffer_as_srt (struct eia608_screen *data, struct s_write *wb)
     mstotime (ms_start,&h1,&m1,&s1,&ms1);
     mstotime (ms_end-1,&h2,&m2,&s2,&ms2); // -1 To prevent overlapping with next line.
 	wb->data608->srt_counter++;
-    sprintf (timeline,"%u\r\n",wb->data608->srt_counter);
+    snprintf (timeline, sizeof(timeline), "%u\r\n",wb->data608->srt_counter);
     enc_buffer_used=encode_line (enc_buffer,(unsigned char *) timeline);
     fwrite (enc_buffer,enc_buffer_used,1,wb->fh);
-    sprintf (timeline, "%02u:%02u:%02u,%03u --> %02u:%02u:%02u,%03u\r\n",
+    snprintf (timeline, sizeof(timeline), "%02u:%02u:%02u,%03u --> %02u:%02u:%02u,%03u\r\n",
         h1,m1,s1,ms1, h2,m2,s2,ms2);
     enc_buffer_used=encode_line (enc_buffer,(unsigned char *) timeline);
     if (debug_608)
@@ -517,7 +521,7 @@ int write_cc_buffer_as_sami (struct eia608_screen *data, struct s_write *wb)
 		return 0;
 	endms = (LONG) (((totalblockswritten_thisfile()+pg)*1000)/29.97)+subs_delay;
     endms--; // To prevent overlapping with next line.
-    sprintf ((char *) str,"<SYNC start=\"%ld\"><P class=\"UNKNOWNCC\">\r\n",startms);
+    snprintf ((char *) str, sizeof(str), "<SYNC start=\"%ld\"><P class=\"UNKNOWNCC\">\r\n",startms);
     if (debug_608 && encoding!=ENC_UNICODE)
     {
         printf ("\r%s\n", str);
@@ -541,14 +545,14 @@ int write_cc_buffer_as_sami (struct eia608_screen *data, struct s_write *wb)
             fwrite (encoded_crlf, 1, encoded_crlf_length,wb->fh);
         }
     }
-    sprintf ((char *) str,"</P></SYNC>\r\n");
+    snprintf ((char *) str, sizeof(str), "</P></SYNC>\r\n");
     if (debug_608 && encoding!=ENC_UNICODE)
     {
         printf ("\r%s\n", str);
     }
     enc_buffer_used=encode_line (enc_buffer,(unsigned char *) str);
     fwrite (enc_buffer,enc_buffer_used,1,wb->fh);
-    sprintf ((char *) str,"<SYNC start=\"%ld\"><P class=\"UNKNOWNCC\">&nbsp</P></SYNC>\r\n\r\n",endms);
+    snprintf ((char *) str, sizeof(str), "<SYNC start=\"%ld\"><P class=\"UNKNOWNCC\">&nbsp</P></SYNC>\r\n\r\n",endms);
     if (debug_608 && encoding!=ENC_UNICODE)
     {
         printf ("\r%s\n", str);
@@ -633,13 +637,16 @@ void roll_up(struct s_write *wb)
         {
             if (j>=0)
             {
+                if (j+1 >= 15) break;  // 15 = max lines in buffer
                 memcpy (use_buffer->characters[j],use_buffer->characters[j+1],33);
                 memcpy (use_buffer->colors[j],use_buffer->colors[j+1],33);
                 memcpy (use_buffer->fonts[j],use_buffer->fonts[j+1],33);
                 use_buffer->row_used[j]=use_buffer->row_used[j+1];
             }
         }
-        for (j=0;j<(1+wb->data608->cursor_row-keep_lines);j++)
+        int limit = 1 + wb->data608->cursor_row - keep_lines;
+        if (limit < 0) limit = 0;
+        for (j=0;j<limit;j++)
         {
             memset(use_buffer->characters[j],' ',32);
             memset(use_buffer->colors[j],COL_WHITE,32);
@@ -1019,6 +1026,7 @@ void process608 (const unsigned char *data, int length, struct s_write *wb)
     if (data!=NULL)
     {
 		int i;
+        if (length % 2 != 0) length--;  // ensure even length for paired processing
         for (i=0;i<length;i=i+2)
         {
             unsigned char hi, lo;

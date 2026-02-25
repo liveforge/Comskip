@@ -36,6 +36,7 @@ double test_pts = 0.0;
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
+#include <libavcodec/codec_desc.h>
 
 //#define restrict
 //#include <libavcodec/ac3dec.h>
@@ -141,7 +142,21 @@ typedef struct VideoState
     double			 duration;
     double			 fps;
     struct SwsContext *img_convert_ctx;
+    AVFrame         *conversion_frame;
 } VideoState;
+
+#if LIBAVCODEC_VERSION_MAJOR >= 62
+static int get_ticks_per_frame(AVCodecContext *ctx) {
+    const AVCodecDescriptor *desc = avcodec_descriptor_get(ctx->codec_id);
+    if (desc && (desc->props & AV_CODEC_PROP_FIELDS))
+        return 2;
+    return 1;
+}
+#else
+static int get_ticks_per_frame(AVCodecContext *ctx) {
+    return ctx->ticks_per_frame;
+}
+#endif
 
 VideoState      *is;
 
@@ -261,7 +276,7 @@ char pict_type;
 char tempstring[512];
 //test
 
-#define DUMP_OPEN if (output_timing) { sprintf(tempstring, "%s.timing.csv", inbasename); timing_file = myfopen(tempstring, "w"); DUMP_HEADER }
+#define DUMP_OPEN if (output_timing) { snprintf(tempstring, sizeof(tempstring), "%s.timing.csv", inbasename); timing_file = myfopen(tempstring, "w"); DUMP_HEADER }
 #define DUMP_HEADER if (timing_file) fprintf(timing_file, "sep=,\ntype   ,real_pts, step        ,pts         ,clock       ,delta       ,offset, repeat\n");
 #define DUMP_TIMING(T, D, P, C, O, S) if (timing_file && !csStepping && !csJumping && !csStartJump) fprintf(timing_file, "%7s, %12.3f, %12.3f, %12.3f, %12.3f, %12.3f, %12.3f, %d\n", \
 	T, (double) (D), (double) calculated_delay, (double) (P), (double) (C), ((double) (P) - (double) (C)), (O), (S));
@@ -411,6 +426,8 @@ int retreive_frame_volume(double from_pts, double to_pts)
     VideoState *is = global_video_state;
     int i;
     double calculated_delay;
+    if (!is || !is->audio_st || !is->audio_st->codecpar) return -1;
+    if (is->audio_st->codecpar->sample_rate <= 0) return -1;
     int s_per_frame = (to_pts - from_pts) * (double)(is->audio_st->codecpar->sample_rate+1);
 
 
@@ -636,6 +653,7 @@ void audio_packet_process(VideoState *is, AVPacket *pkt)
     double prev_audio_clock;
 //    AC3DecodeContext *s = is->audio_st->codecpar->priv_data;
     int      rps,ps;
+    /* pkt_temp points to is->audio_pkt_temp, a dedicated scratch copy; safe to modify data/size pointers */
     AVPacket *pkt_temp = &is->audio_pkt_temp;
 
     int got_frame;
@@ -648,6 +666,8 @@ void audio_packet_process(VideoState *is, AVPacket *pkt)
 
     pkt_temp->data = pkt->data;
     pkt_temp->size = pkt->size;
+
+    if (pkt_temp->size < 2) return;
 
     if ( !ALIGN_AC3_PACKETS && is->audio_st->codecpar->codec_id == AV_CODEC_ID_AC3
         && ((pkt_temp->data[0] != 0x0b || pkt_temp->data[1] != 0x77)))
@@ -674,6 +694,7 @@ void audio_packet_process(VideoState *is, AVPacket *pkt)
         ac3_packet_index = pkt_temp->size;
         ps = 0;
         while (pkt_temp->size >= 2 && (pkt_temp->data[0] != 0x0b || pkt_temp->data[1] != 0x77) ) {
+            if (ps >= AC3_BUFFER_SIZE) break;
             pkt_temp->data++;
             pkt_temp->size--;
             ps++;
@@ -684,6 +705,7 @@ void audio_packet_process(VideoState *is, AVPacket *pkt)
             Debug(8,"Skipped %d of added %d bytes in audio input stream around frame %d\n", ps, pkt->size, framenum);
         pp = pkt_temp->data;
         rps = pkt_temp->size-2;
+        if (rps >= AC3_BUFFER_SIZE) rps = AC3_BUFFER_SIZE - 1;
         while (rps > 1 && (pp[rps] != 0x0b || pp[rps+1] != 0x77) ) {
             rps--;
         }
@@ -901,7 +923,7 @@ again:
     cur_second -= cur_minute * 60;
 
 
-    sprintf(cur_pos, "%2i:%.2i:%.2i", cur_hour, cur_minute, cur_second);
+    snprintf(cur_pos, sizeof(cur_pos), "%2i:%.2i:%.2i", cur_hour, cur_minute, cur_second);
 
     fps = frames * 100.0 / elapsed;
     tfps = frame_counter * 100.0 / total_elapsed;
@@ -1182,19 +1204,6 @@ nextpacket:
                     av_packet_unref(packet);
                     break;
                 }
-/*
-                double frame_delay = av_q2d(is->dec_ctxpar->time_base)* is->dec_ctxpar->ticks_per_frame;         // <------------------------ frame delay is the time in seconds till the next frame
-                if (is->video_clock - is->seek_pts > -frame_delay / 2.0)
-                {
-                    av_packet_unref(packet);
-                    break;
-                }
-                if (is->video_clock + (pack_duration * av_q2d(is->video_st->time_base)) >= is->seek_pts)
-                {
-                    av_packet_unref(packet);
-                    break;
-                }
- */
             }
         }
         else if(packet->stream_index == is->audioStream)
@@ -1291,27 +1300,33 @@ static int    prev_strange_framenum = 0;
         // convert to 8bit
         if (is->pFrame->format == AV_PIX_FMT_YUV420P10LE) {
             is->img_convert_ctx = sws_getCachedContext(is->img_convert_ctx, is->pFrame->width, is->pFrame->height, is->pFrame->format, is->pFrame->width, is->pFrame->height, AV_PIX_FMT_YUV420P, SWS_POINT, NULL, NULL, NULL);
-            AVFrame *newframe = av_frame_alloc();
-            av_frame_copy_props(newframe, is->pFrame);
-            newframe->format = AV_PIX_FMT_YUV420P;
-            newframe->width = is->pFrame->width;
-            newframe->height = is->pFrame->height;
-            av_frame_get_buffer(newframe, 0);
-            sws_scale(is->img_convert_ctx, (const uint8_t * const *)is->pFrame->data, is->pFrame->linesize, 0, is->pFrame->height, newframe->data, newframe->linesize);
+            if (!is->conversion_frame || is->conversion_frame->width != is->pFrame->width || is->conversion_frame->height != is->pFrame->height) {
+                av_frame_free(&is->conversion_frame);
+                is->conversion_frame = av_frame_alloc();
+                if (!is->conversion_frame) { Debug(0, "Failed to allocate conversion frame\n"); return 0; }
+                is->conversion_frame->format = AV_PIX_FMT_YUV420P;
+                is->conversion_frame->width = is->pFrame->width;
+                is->conversion_frame->height = is->pFrame->height;
+                if (av_frame_get_buffer(is->conversion_frame, 0) < 0) { av_frame_free(&is->conversion_frame); return 0; }
+            }
+            av_frame_make_writable(is->conversion_frame);
+            sws_scale(is->img_convert_ctx, (const uint8_t * const *)is->pFrame->data, is->pFrame->linesize, 0, is->pFrame->height, is->conversion_frame->data, is->conversion_frame->linesize);
             av_frame_unref(is->pFrame);
-            is->pFrame = newframe;
+            av_frame_ref(is->pFrame, is->conversion_frame);
         }
 
         if(is->dec_ctx->framerate.den && is->dec_ctx->framerate.num)
         {
-            frame_delay = (1/ av_q2d(is->dec_ctx->framerate) ) /* * is->dec_ctx->ticks_per_frame */ ;
+            frame_delay = (1/ av_q2d(is->dec_ctx->framerate) ) ;
         }
         else
         {
-           frame_delay = av_q2d(is->dec_ctx->time_base) * is->dec_ctx->ticks_per_frame ;
+            AVRational guessed = av_guess_frame_rate(is->pFormatCtx, is->video_st, is->pFrame);
+            if (guessed.den && guessed.num)
+                frame_delay = 1.0 / av_q2d(guessed);
+            else
+                frame_delay = av_q2d(is->dec_ctx->time_base) * get_ticks_per_frame(is->dec_ctx);
         }
-
-//        frame_delay = av_q2d(is->dec_ctx->time_base) * is->dec_ctx->ticks_per_frame ;
         repeat = av_stream_get_parser(is->video_st) ? av_stream_get_parser(is->video_st)->repeat_pict: 4;
 
  //       if (prev_frame_delay != 0.0 && frame_delay != prev_frame_delay)
@@ -1419,24 +1434,23 @@ static int    prev_strange_framenum = 0;
 //#define SHOW_VIDEO_TIMING
 #ifdef SHOW_VIDEO_TIMING
         if (framenum==0)
-            Debug(1,"Video timing ---------------------------------------------------\n", frame_delay/is->dec_ctx->ticks_per_frame, is->dec_ctx->ticks_per_frame, repeat, real_pts,calculated_delay);
+            Debug(1,"Video timing ---------------------------------------------------\n", frame_delay/get_ticks_per_frame(is->dec_ctx), get_ticks_per_frame(is->dec_ctx), repeat, real_pts,calculated_delay);
         else if (framenum<20)
-            Debug(1,"Video timing fr=%6.5f, tick=%d, repeat=%d, pts=%6.3f, step=%6.5f\n", frame_delay/is->dec_ctx->ticks_per_frame, is->dec_ctx->ticks_per_frame, repeat, real_pts,calculated_delay);
+            Debug(1,"Video timing fr=%6.5f, tick=%d, repeat=%d, pts=%6.3f, step=%6.5f\n", frame_delay/get_ticks_per_frame(is->dec_ctx), get_ticks_per_frame(is->dec_ctx), repeat, real_pts,calculated_delay);
 #endif // SHOW_VIDEO_TIMING
 
 
         pts_offset *= 0.9;
         if (!reviewing && timeline_repair) {
             if (framenum > 1 && fabs(calculated_delay - pts_offset - frame_delay) < 1.0) { // Allow max 0.5 second timeline jitter to be compensated
-                if (!ISSAME(3*frame_delay/ is->dec_ctx->ticks_per_frame, calculated_delay))
-                    if (!ISSAME(1*frame_delay/ is->dec_ctx->ticks_per_frame, calculated_delay))
+                if (!ISSAME(3*frame_delay/ get_ticks_per_frame(is->dec_ctx), calculated_delay))
+                    if (!ISSAME(1*frame_delay/ get_ticks_per_frame(is->dec_ctx), calculated_delay))
                         pts_offset = pts_offset + frame_delay - calculated_delay;
             }
         }
         else
             do_audio_repair = 0;
 
-//		Debug(0 ,"pst[%3d] = %12.3f, inter = %d, ticks = %d\n", framenum, pts/frame_delay, is->pFrame->interlaced_frame, is->dec_ctxpar->ticks_per_frame);
 
         pts = real_pts + pts_offset;
 
@@ -1444,9 +1458,9 @@ static int    prev_strange_framenum = 0;
 
         if (!reviewing
             && framenum > 1 && fabs(calculated_delay - frame_delay) > 0.01
-            && !ISSAME(3*frame_delay/ is->dec_ctx->ticks_per_frame, calculated_delay)
-            && !ISSAME(2*frame_delay/ is->dec_ctx->ticks_per_frame, calculated_delay)
-            && !ISSAME(1*frame_delay/ is->dec_ctx->ticks_per_frame, calculated_delay)
+            && !ISSAME(3*frame_delay/ get_ticks_per_frame(is->dec_ctx), calculated_delay)
+            && !ISSAME(2*frame_delay/ get_ticks_per_frame(is->dec_ctx), calculated_delay)
+            && !ISSAME(1*frame_delay/ get_ticks_per_frame(is->dec_ctx), calculated_delay)
             ){
             if ( (prev_strange_framenum + 1 != framenum) &&( prev_strange_step < fabs(calculated_delay - frame_delay))) {
                 Debug(8 ,"Strange video pts step of %6.5f instead of %6.5f at frame %d\n", calculated_delay+0.0000005, frame_delay+0.0000005, framenum); // Unknown strange step
@@ -1590,14 +1604,15 @@ static int    prev_strange_framenum = 0;
                 AVFrameSideData *sd = is->pFrame->side_data[i];
                 if (sd->type != AV_FRAME_DATA_A53_CC) continue;
                 ccDataLen = sd->size + 7;
+                if (ccDataLen > (int)sizeof(ccData)) { Debug(0, "CC data too large (%d)\n", ccDataLen); continue; }
                 ccData[0] = 'G';
                 ccData[1] = 'A';
                 ccData[2] = '9';
                 ccData[3] = '4';
                 ccData[4] = 3;
                 ccData[5] = sd->size / 3 + 64;
-                for (i=0; i<sd->size; i++) {
-                  ccData[i+7] = sd->data[i];
+                for (int j=0; j<sd->size; j++) {
+                  ccData[j+7] = sd->data[j];
                 }
                 dump_data((char *)ccData, (int)ccDataLen);
                 if (processCC) ProcessCCData();
@@ -1698,49 +1713,44 @@ int stream_component_open(VideoState *is, int stream_index)
 
 	codec = avcodec_find_decoder(codecPar->codec_id);
 
-    if (use_qsv && !codec_hw) {
-		if (codecPar->codec_id == AV_CODEC_ID_MJPEG) codec_hw = avcodec_find_decoder_by_name("mjpeg_qsv");
-		if (codecPar->codec_id == AV_CODEC_ID_MPEG2VIDEO) codec_hw = avcodec_find_decoder_by_name("mpeg2_qsv");
-		if (codecPar->codec_id == AV_CODEC_ID_H264) codec_hw = avcodec_find_decoder_by_name("h264_qsv");
-		if (codecPar->codec_id == AV_CODEC_ID_VC1) codec_hw = avcodec_find_decoder_by_name("vc1_qsv");
-		if (codecPar->codec_id == AV_CODEC_ID_HEVC) codec_hw = avcodec_find_decoder_by_name("hevc_qsv");
-		if (codecPar->codec_id == AV_CODEC_ID_AV1) codec_hw = avcodec_find_decoder_by_name("av1_qsv");
-		if (codecPar->codec_id == AV_CODEC_ID_VP8) codec_hw = avcodec_find_decoder_by_name("vp8_qsv");
-		if (codecPar->codec_id == AV_CODEC_ID_VP9) codec_hw = avcodec_find_decoder_by_name("vp9_qsv");
-    }
-
-    if (use_dxva2 && !codec_hw) {
-		if (codecPar->codec_id == AV_CODEC_ID_MPEG2VIDEO) codec_hw = avcodec_find_decoder_by_name("mpeg2_dxva2");
-		if (codecPar->codec_id == AV_CODEC_ID_H264) codec_hw = avcodec_find_decoder_by_name("h264_dxva2");
-		if (codecPar->codec_id == AV_CODEC_ID_MPEG4) codec_hw = avcodec_find_decoder_by_name("mpeg4_dxva2");
-		if (codecPar->codec_id == AV_CODEC_ID_VC1) codec_hw = avcodec_find_decoder_by_name("vc1_dxva2");
-		if (codecPar->codec_id == AV_CODEC_ID_HEVC) codec_hw = avcodec_find_decoder_by_name("hevc_dxva2");
-		if (codecPar->codec_id == AV_CODEC_ID_AV1) codec_hw = avcodec_find_decoder_by_name("av1_dxva2");
-    }
-
-    if (use_vdpau && !codec_hw) {
-		if (codecPar->codec_id == AV_CODEC_ID_MPEG2VIDEO) codec_hw = avcodec_find_decoder_by_name("mpeg2_vdpau");
-		if (codecPar->codec_id == AV_CODEC_ID_H264) codec_hw = avcodec_find_decoder_by_name("h264_vdpau");
-		if (codecPar->codec_id == AV_CODEC_ID_MPEG4) codec_hw = avcodec_find_decoder_by_name("mpeg4_vdpau");
-		if (codecPar->codec_id == AV_CODEC_ID_VC1) codec_hw = avcodec_find_decoder_by_name("vc1_vdpau");
-		if (codecPar->codec_id == AV_CODEC_ID_HEVC) codec_hw = avcodec_find_decoder_by_name("hevc_vdpau");
-    }
-
-    if (use_cuvid && !codec_hw) {
-		if (codecPar->codec_id == AV_CODEC_ID_MPEG2VIDEO) codec_hw = avcodec_find_decoder_by_name("mpeg2_cuvid");
-		if (codecPar->codec_id == AV_CODEC_ID_H264) codec_hw = avcodec_find_decoder_by_name("h264_cuvid");
-		if (codecPar->codec_id == AV_CODEC_ID_HEVC) codec_hw = avcodec_find_decoder_by_name("hevc_cuvid");
-		if (codecPar->codec_id == AV_CODEC_ID_MPEG4) codec_hw = avcodec_find_decoder_by_name("mpeg4_cuvid");
-		if (codecPar->codec_id == AV_CODEC_ID_VC1) codec_hw = avcodec_find_decoder_by_name("vc1_cuvid");
-		if (codecPar->codec_id == AV_CODEC_ID_AV1) codec_hw = avcodec_find_decoder_by_name("av1_cuvid");
-    }
-
-	// If decoding in hardware try if running on a Raspberry Pi and then use it's decoder instead.
-    if (hardware_decode && !codec_hw) {
-		if (codecPar->codec_id == AV_CODEC_ID_MPEG2VIDEO) codec_hw = avcodec_find_decoder_by_name("mpeg2_mmal");
-		if (codecPar->codec_id == AV_CODEC_ID_H264) codec_hw = avcodec_find_decoder_by_name("h264_mmal");
-		if (codecPar->codec_id == AV_CODEC_ID_MPEG4) codec_hw = avcodec_find_decoder_by_name("mpeg4_mmal");
-		if (codecPar->codec_id == AV_CODEC_ID_VC1) codec_hw = avcodec_find_decoder_by_name("vc1_mmal");
+    {
+        static const struct {
+            int *use_flag;
+            const char *suffix;
+            enum AVCodecID codecs[9];
+        } hw_decoders[] = {
+            { &use_qsv,        "qsv",   { AV_CODEC_ID_MJPEG, AV_CODEC_ID_MPEG2VIDEO, AV_CODEC_ID_H264, AV_CODEC_ID_VC1, AV_CODEC_ID_HEVC, AV_CODEC_ID_AV1, AV_CODEC_ID_VP8, AV_CODEC_ID_VP9, AV_CODEC_ID_NONE } },
+            { &use_dxva2,      "dxva2", { AV_CODEC_ID_MPEG2VIDEO, AV_CODEC_ID_H264, AV_CODEC_ID_MPEG4, AV_CODEC_ID_VC1, AV_CODEC_ID_HEVC, AV_CODEC_ID_AV1, AV_CODEC_ID_NONE } },
+            { &use_vdpau,      "vdpau", { AV_CODEC_ID_MPEG2VIDEO, AV_CODEC_ID_H264, AV_CODEC_ID_MPEG4, AV_CODEC_ID_VC1, AV_CODEC_ID_HEVC, AV_CODEC_ID_NONE } },
+            { &use_cuvid,      "cuvid", { AV_CODEC_ID_MPEG2VIDEO, AV_CODEC_ID_H264, AV_CODEC_ID_HEVC, AV_CODEC_ID_MPEG4, AV_CODEC_ID_VC1, AV_CODEC_ID_AV1, AV_CODEC_ID_NONE } },
+            { &hardware_decode, "mmal",  { AV_CODEC_ID_MPEG2VIDEO, AV_CODEC_ID_H264, AV_CODEC_ID_MPEG4, AV_CODEC_ID_VC1, AV_CODEC_ID_NONE } },
+        };
+        static const char *codec_base_names[][2] = {
+            { "mjpeg",  NULL }, { "mpeg2", NULL }, { "h264",  NULL }, { "mpeg4", NULL },
+            { "vc1",    NULL }, { "hevc",  NULL }, { "av1",   NULL }, { "vp8",   NULL }, { "vp9", NULL },
+        };
+        static const enum AVCodecID codec_base_ids[] = {
+            AV_CODEC_ID_MJPEG, AV_CODEC_ID_MPEG2VIDEO, AV_CODEC_ID_H264, AV_CODEC_ID_MPEG4,
+            AV_CODEC_ID_VC1, AV_CODEC_ID_HEVC, AV_CODEC_ID_AV1, AV_CODEC_ID_VP8, AV_CODEC_ID_VP9,
+        };
+        int d, c;
+        for (d = 0; d < (int)(sizeof(hw_decoders)/sizeof(hw_decoders[0])) && !codec_hw; d++) {
+            if (!*(hw_decoders[d].use_flag)) continue;
+            for (c = 0; hw_decoders[d].codecs[c] != AV_CODEC_ID_NONE; c++) {
+                if (codecPar->codec_id == hw_decoders[d].codecs[c]) {
+                    char name[64];
+                    int b;
+                    for (b = 0; b < (int)(sizeof(codec_base_ids)/sizeof(codec_base_ids[0])); b++) {
+                        if (codec_base_ids[b] == codecPar->codec_id) {
+                            snprintf(name, sizeof(name), "%s_%s", codec_base_names[b][0], hw_decoders[d].suffix);
+                            codec_hw = avcodec_find_decoder_by_name(name);
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
     }
 
 
@@ -1890,8 +1900,10 @@ int stream_component_open(VideoState *is, int stream_index)
             codecCtx->thread_count= 1;
 #endif
         }
+#if LIBAVCODEC_VERSION_MAJOR < 62
         if (codecCtx->codec_id == AV_CODEC_ID_MPEG1VIDEO)
             is->dec_ctx->ticks_per_frame = 1;
+#endif
         if (demux_pid)
             selected_video_pid = is->video_st->id;
         /*
@@ -1967,8 +1979,10 @@ void file_open()
     if (global_video_state == NULL)
     {
         is = av_mallocz(sizeof(VideoState));
+        if (!is) { Debug(0, "Failed to allocate VideoState\n"); exit(1); }
         memset(&is->audio_pkt, 0, sizeof(is->audio_pkt));
-        strcpy(is->filename, mpegfilename);
+        strncpy(is->filename, mpegfilename, sizeof(is->filename)-1);
+        is->filename[sizeof(is->filename)-1] = '\0';
         // Register all formats and codecs
         av_log_level=AV_LOG_INFO;
         av_log_set_callback(log_callback_report);
@@ -2006,6 +2020,10 @@ void file_open()
     if ( is->pFormatCtx == NULL)
     {
         is->pFormatCtx = avformat_alloc_context();
+        if (!is->pFormatCtx) {
+            Debug(0, "Could not allocate format context\n");
+            exit(-1);
+        }
         is->pFormatCtx->max_analyze_duration *= 4;
 //        pFormatCtx->probesize = 400000;
 again:
@@ -2077,8 +2095,13 @@ again:
         }
         else
         {
-            Debug(10, "Warning, no stream frame rate, deriving from codec\n");
-            is->fps = 1/(av_q2d(is->dec_ctx->time_base) * is->dec_ctx->ticks_per_frame );
+            AVRational guessed = av_guess_frame_rate(is->pFormatCtx, is->video_st, NULL);
+            if (guessed.den && guessed.num) {
+                is->fps = av_q2d(guessed);
+            } else {
+                Debug(10, "Warning, no stream frame rate, deriving from codec\n");
+                is->fps = 1/(av_q2d(is->dec_ctx->time_base) * get_ticks_per_frame(is->dec_ctx));
+            }
         }
         set_fps( 1.0 / is->fps);
 //        Debug(1, "Stream frame rate is %5.3f f/s\n", is->fps);
@@ -2151,6 +2174,7 @@ void file_close()
 //    av_freep(&ist->hwaccel_device);
 
 
+    av_dict_free(&myoptions);
     if (is->dec_ctx) avcodec_free_context(&is->dec_ctx);
     is->videoStream = -1;
 //    avcodec_free_context(&is->pFormatCtx->streams[is->videoStream]->codec);
@@ -2165,6 +2189,7 @@ void file_close()
     avformat_close_input(&is->pFormatCtx);
 
     av_frame_free(&is->frame);
+    av_frame_free(&is->conversion_frame);
 
 #ifdef HARDWARE_DECODE
     ist->hwaccel_ctx = NULL;
@@ -2260,7 +2285,9 @@ int main (int argc, char ** argv)
         {
             len = strlen(ptr);
         }
+        if (len >= sizeof(HomeDir)) len = sizeof(HomeDir) - 1;
         strncpy(HomeDir, ptr, len);
+        HomeDir[len] = '\0';
 
         ptr = strrchr(HomeDir,'\\');
         if (!ptr || ptr - HomeDir == 0)
@@ -2326,7 +2353,7 @@ int main (int argc, char ** argv)
 
         if (output_timing)
         {
-            sprintf(tempstring, "%s.timing.csv", inbasename);
+            snprintf(tempstring, sizeof(tempstring), "%s.timing.csv", inbasename);
             timing_file = myfopen(tempstring, "w");
             DUMP_HEADER
         }
@@ -2452,7 +2479,11 @@ nextpacket:
 
                     if ((live_tv && retries < live_tv_retries) /* || (selftest == 3 && retries == 0) */)
                     {
-                        double frame_delay = av_q2d(is->dec_ctx->time_base) * is->dec_ctx->ticks_per_frame;
+                        double frame_delay;
+                        if (is->dec_ctx->framerate.den && is->dec_ctx->framerate.num)
+                            frame_delay = 1.0 / av_q2d(is->dec_ctx->framerate);
+                        else
+                            frame_delay = av_q2d(is->dec_ctx->time_base) * get_ticks_per_frame(is->dec_ctx);
 //                    uint64_t retry_target;
                         if (retries == 0)
                         {
@@ -2503,6 +2534,7 @@ nextpacket:
             {
                 /*
                 			  ccDataLen = (int)packet->size;
+                			  if (ccDataLen > (int)sizeof(ccData)) ccDataLen = (int)sizeof(ccData);
                 			  for (i=0; i<ccDataLen; i++) {
                 				  ccData[i] = packet->data[i];
                 			  }

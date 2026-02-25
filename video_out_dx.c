@@ -350,6 +350,8 @@ static long FAR PASCAL event_procedure (HWND hwnd, UINT message,
 
      case WM_WINDOWPOSCHANGED:
           instance = (dx_instance_t *) GetWindowLongPtr (hwnd, GWLP_USERDATA);
+          if (instance == NULL)
+               break;
 
           /* update the window position and size */
           point_window.x = 0;
@@ -930,12 +932,14 @@ void vo_init(int width, int height, char *title)
 #ifdef RGB
      instance = (dx_instance_t *) vo_dxrgb_open();
      hWind = (HWND) instance;
-     strcpy(instance->title, title);
+     strncpy(instance->title, title, sizeof(instance->title) - 1);
+     instance->title[sizeof(instance->title) - 1] = '\0';
      dxrgb_setup( instance, width, height, width, height, &result);
 //	dx_setup_fbuf ( instance, buffer, &result);
 #else
      instance = (HWND) vo_dx_open();
-     strcpy(instance->title, title);
+     strncpy(instance->title, title, sizeof(instance->title) - 1);
+     instance->title[sizeof(instance->title) - 1] = '\0';
      dx_setup( instance, width, height, width, height, &result);
 #endif
 

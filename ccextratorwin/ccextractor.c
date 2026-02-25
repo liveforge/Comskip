@@ -687,10 +687,15 @@ int add_word (const char *word)
 	{
 		// Time to grow
 		spell_capacity+=50;
-		spell_lower=(char **) realloc (spell_lower, sizeof (char *) *
-			spell_capacity);
-		spell_correct=(char **) realloc (spell_correct, sizeof (char *) *
-			spell_capacity);
+		{
+			void *tmp;
+			tmp = realloc (spell_lower, sizeof (char *) * spell_capacity);
+			if (!tmp) { printf ("\rFailed to reallocate spell_lower\n"); exit(1); }
+			spell_lower = (char **)tmp;
+			tmp = realloc (spell_correct, sizeof (char *) * spell_capacity);
+			if (!tmp) { printf ("\rFailed to reallocate spell_correct\n"); exit(1); }
+			spell_correct = (char **)tmp;
+		}
 	}
 	len =strlen (word);
 	new_lower = (char *) malloc (len+1);
@@ -701,7 +706,7 @@ int add_word (const char *word)
 		printf ("\rNot enough memory.\n");
 		return -1;
 	}
-	strcpy (new_correct, word);
+	memcpy (new_correct, word, len+1);
 	for (i=0; i<len; i++)
 	{
 		char c;
@@ -808,9 +813,11 @@ int CEW_init(int argc, char *argv[])
     char *output_filename=NULL;
     char *clean_filename=NULL;
     char *c;
-    char *extension;
+    char *extension = ".bin";
 	int i;
     time_t start;
+    size_t basefilename_size;
+    size_t filename_buf_size;
 
 //    header();
 
@@ -898,7 +905,8 @@ int CEW_init(int argc, char *argv[])
 				printf ("\r--defaultcolor expects a 7 character parameter that starts with #\n");
 				exit (-1);
 			}
-			strcpy ((char *) usercolor_rgb,argv[i+1]);
+			strncpy((char *)usercolor_rgb, argv[i+1], sizeof(usercolor_rgb)-1);
+			usercolor_rgb[sizeof(usercolor_rgb)-1] = '\0';
 			default_color=COL_USERDEFINED;
 			i++;
 		}
@@ -1106,16 +1114,18 @@ int CEW_init(int argc, char *argv[])
     subline = (unsigned char *) malloc (SUBLINESIZE);
     pesheaderbuf = (unsigned char *) malloc (188); // Never larger anyway
 
-    basefilename = (char *) malloc (strlen (inputfile[0])+1);
+    basefilename_size = strlen (inputfile[0])+1;
+    basefilename = (char *) malloc (basefilename_size);
+    filename_buf_size = strlen (inputfile[0])+3+strlen (extension);
 
     if (wbout1.filename==NULL)
     {
-        wbout1.filename = (char *) malloc (strlen (inputfile[0])+3+strlen (extension));
+        wbout1.filename = (char *) malloc (filename_buf_size);
         wbout1.filename[0]=0;
     }
     if (wbout2.filename==NULL)
     {
-        wbout2.filename = (char *) malloc (strlen (inputfile[0])+3+strlen (extension));
+        wbout2.filename = (char *) malloc (filename_buf_size);
         wbout2.filename[0]=0;
     }
     if (fbuffer == NULL || basefilename == NULL || pesheaderbuf==NULL ||
@@ -1126,7 +1136,8 @@ int CEW_init(int argc, char *argv[])
         exit (1);
     }
 
-    strcpy (basefilename, inputfile[0]);
+    strncpy (basefilename, inputfile[0], basefilename_size-1);
+    basefilename[basefilename_size-1]=0;
     for (c=basefilename+strlen (basefilename)-1; c>basefilename &&
         *c!='.'; c--) {;} // Get last .
     if (*c=='.')
@@ -1136,8 +1147,10 @@ int CEW_init(int argc, char *argv[])
     {
         if (wbout1.filename[0]==0)
         {
-            strcpy (wbout1.filename,basefilename);
-            strcat (wbout1.filename,".bin");
+            strncpy (wbout1.filename,basefilename,filename_buf_size-1);
+            wbout1.filename[filename_buf_size-1]=0;
+            if (strlen(wbout1.filename)+strlen(".bin") < filename_buf_size)
+                strncat (wbout1.filename,".bin", filename_buf_size - strlen(wbout1.filename) - 1);
         }
         printf ("Creating %s\n", wbout1.filename);
         wbout1.fh=FOPEN (wbout1.filename, "wb");
@@ -1153,9 +1166,11 @@ int CEW_init(int argc, char *argv[])
         {
             if (wbout1.filename[0]==0)
             {
-                strcpy (wbout1.filename,basefilename);
-//                strcat (wbout1.filename,"_1");
-                strcat (wbout1.filename,(const char *) extension);
+                strncpy (wbout1.filename,basefilename,filename_buf_size-1);
+                wbout1.filename[filename_buf_size-1]=0;
+//                strncat (wbout1.filename,"_1",...);
+                if (strlen(wbout1.filename)+strlen((const char *) extension) < filename_buf_size)
+                    strncat (wbout1.filename,(const char *) extension, filename_buf_size - strlen(wbout1.filename) - 1);
             }
             printf ("Creating %s\n", wbout1.filename);
             wbout1.fh=FOPEN (wbout1.filename, "wb");
@@ -1180,9 +1195,12 @@ int CEW_init(int argc, char *argv[])
         {
             if (wbout2.filename[0]==0)
             {
-                strcpy (wbout2.filename,basefilename);
-                strcat (wbout2.filename,"_2");
-                strcat (wbout2.filename,(const char *) extension);
+                strncpy (wbout2.filename,basefilename,filename_buf_size-1);
+                wbout2.filename[filename_buf_size-1]=0;
+                if (strlen(wbout2.filename)+strlen("_2") < filename_buf_size)
+                    strncat (wbout2.filename,"_2", filename_buf_size - strlen(wbout2.filename) - 1);
+                if (strlen(wbout2.filename)+strlen((const char *) extension) < filename_buf_size)
+                    strncat (wbout2.filename,(const char *) extension, filename_buf_size - strlen(wbout2.filename) - 1);
             }
             printf ("Creating %s\n", wbout2.filename);
             wbout2.fh=FOPEN (wbout2.filename, "wb");
@@ -1196,7 +1214,7 @@ int CEW_init(int argc, char *argv[])
             else
             {
                 if (encoding==ENC_UNICODE) // Write BOM
-                    writeraw (LITTLE_ENDIAN_BOM, sizeof (LITTLE_ENDIAN_BOM), &wbout1);
+                    writeraw (LITTLE_ENDIAN_BOM, sizeof (LITTLE_ENDIAN_BOM), &wbout2);
                 write_subtitle_file_header (&wbout2);
             }
         }
