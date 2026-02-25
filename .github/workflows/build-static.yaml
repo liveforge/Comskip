@@ -1,0 +1,88 @@
+name: Build Static Linux Binary
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-static:
+    runs-on: ubuntu-latest
+    container: alpine:3.21
+    steps:
+      - name: Install build tools and dependencies
+        run: |
+          apk add --no-cache \
+            build-base pkgconf autoconf automake libtool \
+            git nasm yasm wget \
+            zlib-dev zlib-static \
+            bzip2-dev bzip2-static \
+            xz-dev xz-static \
+            linux-headers
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build argtable2 from source (static)
+        run: |
+          wget -q https://sourceforge.net/projects/argtable/files/argtable/argtable-2.13/argtable2-13.tar.gz/download -O argtable2.tar.gz
+          tar xzf argtable2.tar.gz
+          cd argtable2-13
+          ./configure --prefix=/usr/local --enable-static --disable-shared
+          make -j$(nproc)
+          make install
+
+      - name: Build FFmpeg from source (minimal static, decode-only)
+        run: |
+          git clone --depth 1 --branch n7.1 https://github.com/FFmpeg/FFmpeg.git /tmp/ffmpeg
+          cd /tmp/ffmpeg
+          ./configure \
+            --prefix=/usr/local \
+            --enable-static \
+            --disable-shared \
+            --enable-gpl \
+            --disable-programs \
+            --disable-doc \
+            --disable-avdevice \
+            --disable-avfilter \
+            --disable-postproc \
+            --disable-network \
+            --disable-encoders \
+            --disable-muxers \
+            --disable-devices \
+            --disable-filters \
+            --disable-bsfs \
+            --disable-protocols \
+            --enable-protocol=file \
+            --enable-protocol=pipe \
+            --extra-cflags="-fPIC" \
+            --extra-libs="-lpthread -lm"
+          make -j$(nproc)
+          make install
+
+      - name: Build Comskip (static)
+        run: |
+          export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+          ./autogen.sh
+          ./configure --enable-static --disable-gui
+          make -j$(nproc)
+
+      - name: Verify static binary
+        run: |
+          file comskip
+          ldd comskip 2>&1 || true
+          ls -lh comskip
+          ./comskip --help 2>&1 | head -5 || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: comskip-linux-x86_64-static
+          path: comskip
+
+      - name: Create release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: comskip
