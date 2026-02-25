@@ -15,23 +15,20 @@ jobs:
         run: |
           apk add --no-cache \
             build-base pkgconf autoconf automake libtool \
-            git nasm yasm wget \
+            git nasm yasm \
             zlib-dev zlib-static \
             bzip2-dev bzip2-static \
             xz-dev xz-static \
+            argtable2-dev \
             linux-headers
+
+      - name: Verify argtable2 static library
+        run: |
+          ls -la /usr/lib/libargtable2* || true
+          pkg-config --static --libs argtable2
 
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Build argtable2 from source (static)
-        run: |
-          wget -q https://sourceforge.net/projects/argtable/files/argtable/argtable-2.13/argtable2-13.tar.gz/download -O argtable2.tar.gz
-          tar xzf argtable2.tar.gz
-          cd argtable2-13
-          ./configure --prefix=/usr/local --enable-static --disable-shared
-          make -j$(nproc)
-          make install
 
       - name: Build FFmpeg from source (minimal static, decode-only)
         run: |
