@@ -718,7 +718,7 @@ void handle_command (/*const */ unsigned char c1, const unsigned char c2, struct
         command = COM_ERASENONDISPLAYEDMEMORY;
     if ((c1==0x14 || c1==0x1C) && c2==0x21)
         command = COM_BACKSPACE;
-	if ((c1==0x14 || c1==0x1C) && c2==0x2b)
+    if ((c1==0x14 || c1==0x1C) && c2==0x2b)
         command = COM_RESUMETEXTDISPLAY;
     if (debug_608)
     {
@@ -912,12 +912,12 @@ void handle_pac (unsigned char c1, unsigned char c2, struct s_write *wb)
     indent=pac2_attribs[c2][2];
     if (debug_608)
         printf ("\rPosition: %d:%d, color: %s,  font: %s\n",row, indent,color_text[color][0],font_text[font]);
-	if (wb->data608->mode!=MODE_TEXT)
-	{
-		// According to Robson, row info is discarded in text mode
-		// but column is accepted
-		wb->data608->cursor_row=row-1 ; // Since the array is 0 based
-	}
+    if (wb->data608->mode!=MODE_TEXT)
+    {
+        // According to Robson, row info is discarded in text mode
+        // but column is accepted
+        wb->data608->cursor_row=row-1 ; // Since the array is 0 based
+    }
     wb->data608->rollup_base_row=row-1;
     wb->data608->cursor_column=indent;
 }

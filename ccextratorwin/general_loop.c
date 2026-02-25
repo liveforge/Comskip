@@ -263,7 +263,6 @@ LONG buffered_read_opt (unsigned char *buffer, unsigned int bytes)
 // TS specific data grabber
 long ts_getmoredata(void)
 {
-	int paystart=0;
 	int pes_start_in_this_pass = 0;
 	int enough = 0;
 
@@ -331,7 +330,6 @@ long ts_getmoredata(void)
 
 			if (payload_start)
 			{
-				paystart++;
 				if (got_pes_header) // Starting new PES. Rollback and out
 				{
 					//FSEEK (in,-4,SEEK_CUR);

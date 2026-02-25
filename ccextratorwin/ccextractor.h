@@ -146,18 +146,18 @@ extern int bytesinbuffer; // Number of bytes we actually have on buffer
 } else _result=buffered_read_opt (buffer,bytes);
 
 #define buffered_read_4(buffer) if (4<=bytesinbuffer-filebuffer_pos) { \
-    if (buffer) { buffer[0]=filebuffer[filebuffer_pos]; \
+    buffer[0]=filebuffer[filebuffer_pos]; \
     buffer[1]=filebuffer[filebuffer_pos+1]; \
     buffer[2]=filebuffer[filebuffer_pos+2]; \
     buffer[3]=filebuffer[filebuffer_pos+3]; \
     filebuffer_pos+=4; \
-    _result=4; } \
+    _result=4; \
 } else _result=buffered_read_opt (buffer,4);
 
 #define buffered_read_byte(buffer) if (bytesinbuffer-filebuffer_pos) { \
-    if (buffer) { *buffer=filebuffer[filebuffer_pos]; \
+    *buffer=filebuffer[filebuffer_pos]; \
     filebuffer_pos++; \
-    _result=1; } \
+    _result=1; \
 } else _result=buffered_read_opt (buffer,1);
 
 // extern FILE *in, *clean;

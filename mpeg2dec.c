@@ -154,7 +154,10 @@ static int get_ticks_per_frame(AVCodecContext *ctx) {
 }
 #else
 static int get_ticks_per_frame(AVCodecContext *ctx) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     return ctx->ticks_per_frame;
+#pragma GCC diagnostic pop
 }
 #endif
 
@@ -556,15 +559,15 @@ void sound_to_frames(VideoState *is, short **b, int s, int c, int format)
     old_base_apts = base_apts;
     if (fabs(base_apts - (is->audio_clock - ((double)audio_samples /(double)(is->audio_st->codecpar->sample_rate))))> 0.0001)
         base_apts = (is->audio_clock - ((double)audio_samples /(double)(is->audio_st->codecpar->sample_rate)));
-        if (ALIGN_AC3_PACKETS && is->audio_st->codecpar->codec_id == AV_CODEC_ID_AC3) {
-                    if (   ISSAME(base_apts - old_base_apts, 0.032)
-                        || ISSAME(base_apts - old_base_apts, -0.032)
-                        || ISSAME(base_apts - old_base_apts, 0.064)
-                        || ISSAME(base_apts - old_base_apts, -0.064)
-                        || ISSAME(base_apts - old_base_apts, -0.096)
-                        )
-                        old_base_apts = base_apts; // Ignore AC3 packet jitter
-            }
+    if (ALIGN_AC3_PACKETS && is->audio_st->codecpar->codec_id == AV_CODEC_ID_AC3) {
+        if (   ISSAME(base_apts - old_base_apts, 0.032)
+            || ISSAME(base_apts - old_base_apts, -0.032)
+            || ISSAME(base_apts - old_base_apts, 0.064)
+            || ISSAME(base_apts - old_base_apts, -0.064)
+            || ISSAME(base_apts - old_base_apts, -0.096)
+            )
+            old_base_apts = base_apts; // Ignore AC3 packet jitter
+    }
     if (old_base_apts != 0.0 && (fabs(base_apts - old_base_apts)>0.01)) {
         Debug(8, "Jump in base apts from %6.5f to %6.5f, delta=%6.5f\n",old_base_apts, base_apts, base_apts -old_base_apts);
     }
@@ -1901,8 +1904,11 @@ int stream_component_open(VideoState *is, int stream_index)
 #endif
         }
 #if LIBAVCODEC_VERSION_MAJOR < 62
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
         if (codecCtx->codec_id == AV_CODEC_ID_MPEG1VIDEO)
             is->dec_ctx->ticks_per_frame = 1;
+#pragma GCC diagnostic pop
 #endif
         if (demux_pid)
             selected_video_pid = is->video_st->id;

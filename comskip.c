@@ -4642,18 +4642,18 @@ again:
         FILE* tempFile;
         if ((most_cc_type == PAINTON) || (most_cc_type == ROLLUP) || (most_cc_type == POPON))
         {
-            sprintf(temp, "%s.ccyes", workbasename);
+            snprintf(temp, sizeof(temp),"%s.ccyes", workbasename);
             tempFile = myfopen(temp, "w");
             fclose(tempFile);
-            sprintf(temp, "%s.ccno", workbasename);
+            snprintf(temp, sizeof(temp),"%s.ccno", workbasename);
             myremove(temp);
         }
         else
         {
-            sprintf(temp, "%s.ccno", workbasename);
+            snprintf(temp, sizeof(temp),"%s.ccno", workbasename);
             tempFile = myfopen(temp, "w");
             fclose(tempFile);
-            sprintf(temp, "%s.ccyes", workbasename);
+            snprintf(temp, sizeof(temp),"%s.ccyes", workbasename);
             myremove(temp);
         }
     }
@@ -6122,7 +6122,7 @@ void OpenOutputFiles()
 
     if (output_chapters)
     {
-        sprintf(filename, "%s.chap", outbasename);
+        snprintf(filename, sizeof(filename),"%s.chap", outbasename);
         chapters_file = myfopen(filename, "w");
         if (!chapters_file)
         {
@@ -6139,7 +6139,7 @@ void OpenOutputFiles()
 
     if (output_zoomplayer_cutlist)
     {
-        sprintf(filename, "%s.cut", outbasename);
+        snprintf(filename, sizeof(filename),"%s.cut", outbasename);
         zoomplayer_cutlist_file = myfopen(filename, "w");
         if (!zoomplayer_cutlist_file)
         {
@@ -6154,7 +6154,7 @@ void OpenOutputFiles()
     }
     if (output_plist_cutlist)
     {
-        sprintf(filename, "%s.plist", outbasename);
+        snprintf(filename, sizeof(filename),"%s.plist", outbasename);
         plist_cutlist_file = myfopen(filename, "w");
         if (!plist_cutlist_file)
         {
@@ -6171,7 +6171,7 @@ void OpenOutputFiles()
 
     if (output_incommercial)
     {
-        sprintf(filename, "%s.incommercial", workbasename);
+        snprintf(filename, sizeof(filename),"%s.incommercial", workbasename);
         incommercial_file = myfopen(filename, "w");
         if (!incommercial_file)
         {
@@ -6187,7 +6187,7 @@ void OpenOutputFiles()
 
     if (output_zoomplayer_chapter)
     {
-        sprintf(filename, "%s.chp", outbasename);
+        snprintf(filename, sizeof(filename),"%s.chp", outbasename);
         zoomplayer_chapter_file = myfopen(filename, "w");
         if (!zoomplayer_chapter_file)
         {
@@ -6203,7 +6203,7 @@ void OpenOutputFiles()
 
     if (output_scf)
     {
-        sprintf(filename, "%s.scf", outbasename);
+        snprintf(filename, sizeof(filename),"%s.scf", outbasename);
         scf_file = myfopen(filename, "w");
         if (!scf_file)
         {
@@ -6218,7 +6218,7 @@ void OpenOutputFiles()
 
     if (output_edl)
     {
-        sprintf(filename, "%s.edl", outbasename);
+        snprintf(filename, sizeof(filename),"%s.edl", outbasename);
         edl_file = myfopen(filename, "wb");
         if (!edl_file)
         {
@@ -6233,7 +6233,7 @@ void OpenOutputFiles()
 
     if (output_ffmeta)
     {
-        sprintf(filename, "%s.ffmeta", outbasename);
+        snprintf(filename, sizeof(filename),"%s.ffmeta", outbasename);
         ffmeta_file = myfopen(filename, "wb");
         if (!ffmeta_file)
         {
@@ -6248,7 +6248,7 @@ void OpenOutputFiles()
 
     if (output_ffsplit)
     {
-        sprintf(filename, "%s.ffsplit", outbasename);
+        snprintf(filename, sizeof(filename),"%s.ffsplit", outbasename);
         ffsplit_file = myfopen(filename, "wb");
         if (!ffsplit_file)
         {
@@ -6263,7 +6263,7 @@ void OpenOutputFiles()
 /*
     if (output_live)
     {
-        sprintf(filename, "%s.live", outbasename);
+        snprintf(filename, sizeof(filename),"%s.live", outbasename);
         live_file = myfopen(filename, "wb");
         if (!live_file)
         {
@@ -6278,7 +6278,7 @@ void OpenOutputFiles()
 */
     if (output_ipodchap)
     {
-        sprintf(filename, "%s.chap", outbasename);
+        snprintf(filename, sizeof(filename),"%s.chap", outbasename);
         ipodchap_file = myfopen(filename, "w");
         if (!ipodchap_file)
         {
@@ -6294,7 +6294,7 @@ void OpenOutputFiles()
 
     if (output_edlp)
     {
-        sprintf(filename, "%s.edlp", outbasename);
+        snprintf(filename, sizeof(filename),"%s.edlp", outbasename);
         edlp_file = myfopen(filename, "w");
         if (!edlp_file)
         {
@@ -6310,7 +6310,7 @@ void OpenOutputFiles()
 
     if (output_bsplayer)
     {
-        sprintf(filename, "%s.bcf", outbasename);
+        snprintf(filename, sizeof(filename),"%s.bcf", outbasename);
         bcf_file = myfopen(filename, "w");
         if (!bcf_file)
         {
@@ -6325,7 +6325,7 @@ void OpenOutputFiles()
 
     if (output_edlx)
     {
-        sprintf(filename, "%s.edlx", outbasename);
+        snprintf(filename, sizeof(filename),"%s.edlx", outbasename);
         edlx_file = myfopen(filename, "w");
         if (!edlx_file)
         {
@@ -6351,7 +6351,7 @@ void OpenOutputFiles()
 //<SceneMarker 2>4254502333
 //<SceneMarker 3>4708947222
 
-        sprintf(filename, "%s.VPrj", outbasename);
+        snprintf(filename, sizeof(filename),"%s.VPrj", outbasename);
         videoredo_file = myfopen(filename, "w");
         if (videoredo_file)
         {
@@ -6361,7 +6361,7 @@ void OpenOutputFiles()
             }
             else
             {
-                _getcwd(cwd, 256);
+                (void)_getcwd(cwd, 256);
                 fprintf(videoredo_file, "<Version>2\n<Filename>%s%c%s\n", cwd, PATH_SEPARATOR, mpegfilename);
             }
             if (is_h264)
@@ -6401,7 +6401,7 @@ void OpenOutputFiles()
 
         */
 
-        sprintf(filename, "%s.VPrj", outbasename);
+        snprintf(filename, sizeof(filename),"%s.VPrj", outbasename);
         videoredo3_file = myfopen(filename, "w");
         if (videoredo3_file)
         {
@@ -6411,7 +6411,7 @@ void OpenOutputFiles()
             }
             else
             {
-                _getcwd(cwd, 256);
+                (void)_getcwd(cwd, 256);
                 fprintf(videoredo3_file, "<VideoReDoProject Version=\"3\">\n<Filename>%s%c%s</Filename><CutList>\n", cwd, PATH_SEPARATOR, EscapeXmlFilename(mpegfilename));
             }
 //              if (is_h264) {
@@ -6430,7 +6430,7 @@ void OpenOutputFiles()
 
     if (output_btv)
     {
-        sprintf(filename, "%s.chapters.xml", mpegfilename);
+        snprintf(filename, sizeof(filename),"%s.chapters.xml", mpegfilename);
         btv_file = myfopen(filename, "w");
         if (btv_file)
         {
@@ -6447,7 +6447,7 @@ void OpenOutputFiles()
 
     if (output_cuttermaran)
     {
-        sprintf(filename, "%s.cpf", outbasename);
+        snprintf(filename, sizeof(filename),"%s.cpf", outbasename);
         cuttermaran_file = myfopen(filename, "w");
         if (cuttermaran_file)
         {
@@ -6457,8 +6457,8 @@ void OpenOutputFiles()
             }
             else
             {
-                _getcwd(cwd, 256);
-                sprintf(tempstr, "%s%c%s", cwd, PATH_SEPARATOR, inbasename);
+                (void)_getcwd(cwd, 256);
+                snprintf(tempstr, sizeof(tempstr),"%s%c%s", cwd, PATH_SEPARATOR, inbasename);
             }
             fprintf(cuttermaran_file, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
             fprintf(cuttermaran_file, "<StateData xmlns=\"http://cuttermaran.kickme.to/StateData.xsd\">\n");
@@ -6475,7 +6475,7 @@ void OpenOutputFiles()
 
     if (output_vcf)
     {
-        sprintf(filename, "%s.vcf", outbasename);
+        snprintf(filename, sizeof(filename),"%s.vcf", outbasename);
         vcf_file = myfopen(filename, "w");
         if (vcf_file)
         {
@@ -6485,8 +6485,8 @@ void OpenOutputFiles()
             }
             else
             {
-                _getcwd(cwd, 256);
-                sprintf(tempstr, "%s%c%s", cwd, PATH_SEPARATOR, inbasename);
+                (void)_getcwd(cwd, 256);
+                snprintf(tempstr, sizeof(tempstr),"%s%c%s", cwd, PATH_SEPARATOR, inbasename);
             }
             fprintf(vcf_file, "VirtualDub.video.SetMode(0);\nVirtualDub.subset.Clear();\n");
 //			fclose(vcf_file);
@@ -6500,7 +6500,7 @@ void OpenOutputFiles()
 
     if (output_vdr)
     {
-        sprintf(filename, "%s.vdr", outbasename);
+        snprintf(filename, sizeof(filename),"%s.vdr", outbasename);
         vdr_file = myfopen(filename, "w");
         if (vdr_file)
         {
@@ -6510,8 +6510,8 @@ void OpenOutputFiles()
             }
             else
             {
-                _getcwd(cwd, 256);
-                sprintf(tempstr, "%s%c%s", cwd, PATH_SEPARATOR, inbasename);
+                (void)_getcwd(cwd, 256);
+                snprintf(tempstr, sizeof(tempstr),"%s%c%s", cwd, PATH_SEPARATOR, inbasename);
             }
 //			fprintf(vdr_file, "VirtualDub.video.SetMode(0);\nVirtualDub.subset.Clear();\n");
 //			fclose(vdr_file);
@@ -6525,7 +6525,7 @@ void OpenOutputFiles()
 
     if (output_projectx)
     {
-        sprintf(filename, "%s.Xcl", mpegfilename);
+        snprintf(filename, sizeof(filename),"%s.Xcl", mpegfilename);
         projectx_file = myfopen(filename, "w");
         if (projectx_file)
         {
@@ -6540,7 +6540,7 @@ void OpenOutputFiles()
 
     if (output_avisynth)
     {
-        sprintf(filename, "%s.avs", mpegfilename);
+        snprintf(filename, sizeof(filename),"%s.avs", mpegfilename);
         avisynth_file = myfopen(filename, "w");
         if (avisynth_file)
         {
@@ -6559,7 +6559,7 @@ void OpenOutputFiles()
 
     if (output_womble)
     {
-        sprintf(filename, "%s.wme", outbasename);
+        snprintf(filename, sizeof(filename),"%s.wme", outbasename);
         womble_file = myfopen(filename, "w");
         if (womble_file)
         {
@@ -6575,7 +6575,7 @@ void OpenOutputFiles()
 
     if (output_mls)
     {
-        sprintf(filename, "%s.mls", outbasename);
+        snprintf(filename, sizeof(filename),"%s.mls", outbasename);
         mls_file = myfopen(filename, "w");
         if (mls_file)
         {
@@ -6597,7 +6597,7 @@ void OpenOutputFiles()
 
     if (output_mpgtx)
     {
-        sprintf(filename, "%s_mpgtx.bat", outbasename);
+        snprintf(filename, sizeof(filename),"%s_mpgtx.bat", outbasename);
         mpgtx_file = myfopen(filename, "w");
         if (mpgtx_file)
         {
@@ -6614,7 +6614,7 @@ void OpenOutputFiles()
 
     if (output_dvrcut)
     {
-        sprintf(filename, "%s_dvrcut.bat", outbasename);
+        snprintf(filename, sizeof(filename),"%s_dvrcut.bat", outbasename);
         dvrcut_file = myfopen(filename, "w");
         if (dvrcut_file)
         {
@@ -6633,7 +6633,7 @@ void OpenOutputFiles()
 
     if (output_dvrmstb)
     {
-        sprintf(filename, "%s.xml", outbasename);
+        snprintf(filename, sizeof(filename),"%s.xml", outbasename);
         dvrmstb_file = myfopen(filename, "w");
         if (dvrmstb_file)
         {
@@ -6649,7 +6649,7 @@ void OpenOutputFiles()
 
     if (output_mpeg2schnitt)
     {
-        sprintf(filename, "%s_mpeg2schnitt.bat", inbasename);
+        snprintf(filename, sizeof(filename),"%s_mpeg2schnitt.bat", inbasename);
         mpeg2schnitt_file = myfopen(filename, "w");
         if (mpeg2schnitt_file)
         {
@@ -6690,7 +6690,7 @@ void OpenOutputFiles()
 			</EditionEntry>
 		</Chapters>
 		*/
-		sprintf(filename, "%s.mkvtoolnix.chapters", outbasename);
+		snprintf(filename, sizeof(filename),"%s.mkvtoolnix.chapters", outbasename);
 		mkvtoolnix_chapters_file = myfopen(filename, "wb");
 		if (!mkvtoolnix_chapters_file)
 		{
@@ -6738,7 +6738,7 @@ void OpenOutputFiles()
 			</EditionEntry>
 		</Chapters>
 		*/
-		sprintf(filename, "%s.mkvtoolnix.tags", outbasename);
+		snprintf(filename, sizeof(filename),"%s.mkvtoolnix.tags", outbasename);
 		mkvtoolnix_tags_file = myfopen(filename, "wb");
 		if (!mkvtoolnix_tags_file)
 		{
@@ -7664,7 +7664,7 @@ bool OutputBlocks(void)
 
     if (output_videoredo)
     {
-        sprintf(filename, "%s.VPrj", outbasename);
+        snprintf(filename, sizeof(filename),"%s.VPrj", outbasename);
         videoredo_file = myfopen(filename, "a+");
         if (videoredo_file)
         {
@@ -7678,7 +7678,7 @@ bool OutputBlocks(void)
 
     if (output_videoredo3)
     {
-        sprintf(filename, "%s.VPrj", outbasename);
+        snprintf(filename, sizeof(filename),"%s.VPrj", outbasename);
         videoredo3_file = myfopen(filename, "a+");
         if (videoredo3_file)
         {
@@ -7698,7 +7698,7 @@ bool OutputBlocks(void)
 
     if (output_chapters)
     {
-//		sprintf(filename, "%s.chap", outbasename);
+//		snprintf(filename, sizeof(filename),"%s.chap", outbasename);
 //		chapters_file = myfopen(filename, "a+");
         if (chapters_file)
         {
@@ -7780,7 +7780,7 @@ bool OutputBlocks(void)
 
     if (output_tuning)
     {
-        sprintf(filename, "%s.tun", workbasename);
+        snprintf(filename, sizeof(filename),"%s.tun", workbasename);
         tuning_file = myfopen(filename, "w");
         fprintf(tuning_file,"max_volume=%6i\n", min_volume+200);
         fprintf(tuning_file,"max_avg_brightness=%6i\n", min_brightness_found+5);
@@ -8147,8 +8147,8 @@ bool OutputCleanMpg()
                     j=0;
                 else
                 {
-                    _write(outf, Buf, j);
-                    _write(outf, MPEG2SysHdr, sizeof(MPEG2SysHdr));
+                    (void)_write(outf, Buf, j);
+                    (void)_write(outf, MPEG2SysHdr, sizeof(MPEG2SysHdr));
                 }
             }
 
@@ -8272,11 +8272,11 @@ double FindNumber(char* str1, char* str2, double v)
             negative = true;
         }
         res = (negative?-atof(str1):atof(str1));
-        sprintf(tmp, "%s%0f\n", str2, res);
+        snprintf(tmp, sizeof(tmp),"%s%0f\n", str2, res);
     }
     else
     {
-        sprintf(tmp, "%s%0f\n", str2, v);
+        snprintf(tmp, sizeof(tmp),"%s%0f\n", str2, v);
     }
     i = strlen(tmp);
     while (i >= 2 && tmp[i-2] == '0')
@@ -8331,7 +8331,7 @@ char * FindString(char* str1, char* str2, char *v)
             *t++ = 0;
             v = foundText;
             found = 1;
-            sprintf(tmp, "%s\"%s\"\n", str2, foundText);
+            snprintf(tmp, sizeof(tmp),"%s\"%s\"\n", str2, foundText);
 //			strcat(ini_text, tmp);
 //			return(foundText);
         }
@@ -8372,7 +8372,7 @@ char * FindString(char* str1, char* str2, char *v)
     *t++ = '"';
     *t++ = '\n';
     *t++ = 0;
-//	sprintf(tmp, "%s\"%s\"\n", str2, v);
+//	snprintf(tmp, sizeof(tmp),"%s\"%s\"\n", str2, v);
     AddIniString(tmp);
     if (found)
         return(foundText);
@@ -8973,7 +8973,7 @@ FILE* LoadSettings(int argc, char ** argv)
             exit(3);
         }
 */
-        sprintf(inifilename, "%.*scomskip.ini", i, inbasename);
+        snprintf(inifilename, sizeof(inifilename),"%.*scomskip.ini", i, inbasename);
     }
     else if (strcmp(in->extension[0], ".csv") == 0)
     {
@@ -9035,7 +9035,7 @@ FILE* LoadSettings(int argc, char ** argv)
             i--;
         }
         strcpy(shortbasename, &inbasename[i]);
-        sprintf(inifilename, "%.*scomskip.ini", i, inbasename);
+        snprintf(inifilename, sizeof(inifilename),"%.*scomskip.ini", i, inbasename);
         if (mpegfilename[0] == 0) sprintf(mpegfilename, "%s.mpg", inbasename);
     }
     else if (strcmp(in->extension[0], ".txt") == 0)
@@ -9100,7 +9100,7 @@ FILE* LoadSettings(int argc, char ** argv)
             i--;
         }
         strcpy(shortbasename, &inbasename[i]);
-        sprintf(inifilename, "%.*scomskip.ini", i, inbasename);
+        snprintf(inifilename, sizeof(inifilename),"%.*scomskip.ini", i, inbasename);
 //		sprintf(mpegfilename, "%s.mpg", inbasename);
     }
     else
@@ -9110,7 +9110,7 @@ FILE* LoadSettings(int argc, char ** argv)
     }
     if (cl_ini->count)
     {
-        sprintf(inifilename, "%s", cl_ini->filename[0]);
+        snprintf(inifilename, sizeof(inifilename),"%s", cl_ini->filename[0]);
         printf("Setting ini file to %s as per commandline\n", inifilename);
     }
     ini_file = myfopen(inifilename, "r");
@@ -9158,26 +9158,26 @@ FILE* LoadSettings(int argc, char ** argv)
 
     sprintf(logofilename, "%s.logo.txt", workbasename);
     sprintf(logfilename, "%s.log", workbasename);
-    sprintf(filename, "%s.txt", outbasename);
+    snprintf(filename, sizeof(filename),"%s.txt", outbasename);
     if (strcmp(HomeDir, ".") == 0)
     {
         if (!ini_file)
         {
-            sprintf(inifilename, "comskip.ini");
+            snprintf(inifilename, sizeof(inifilename),"comskip.ini");
             ini_file = myfopen(inifilename, "r");
         }
-        sprintf(exefilename, "comskip.exe");
-        sprintf(dictfilename, "comskip.dictionary");
+        snprintf(exefilename, sizeof(exefilename),"comskip.exe");
+        snprintf(dictfilename, sizeof(dictfilename),"comskip.dictionary");
     }
     else
     {
         if (!ini_file)
         {
-            sprintf(inifilename, "%s%ccomskip.ini", HomeDir, PATH_SEPARATOR);
+            snprintf(inifilename, sizeof(inifilename),"%s%ccomskip.ini", HomeDir, PATH_SEPARATOR);
             ini_file = myfopen(inifilename, "r");
         }
-        sprintf(exefilename, "%s%ccomskip.exe", HomeDir, PATH_SEPARATOR);
-        sprintf(dictfilename, "%s%ccomskip.dictionary", HomeDir, PATH_SEPARATOR);
+        snprintf(exefilename, sizeof(exefilename),"%s%ccomskip.exe", HomeDir, PATH_SEPARATOR);
+        snprintf(dictfilename, sizeof(dictfilename),"%s%ccomskip.dictionary", HomeDir, PATH_SEPARATOR);
     }
 
     if (cl_cut->count)
@@ -9556,12 +9556,12 @@ static        char *CEW_argv[10];
         {
             CEW_argv[i++] = "-sami";
             output_srt = 1;
-            sprintf(filename, "%s.smi", outbasename);
+            snprintf(filename, sizeof(filename),"%s.smi", outbasename);
         }
         else
         {
             CEW_argv[i++] = "-srt";
-            sprintf(filename, "%s.srt", outbasename);
+            snprintf(filename, sizeof(filename),"%s.srt", outbasename);
         }
         CEW_argv[i++] = (char *)in->filename[0];
         CEW_argv[i++] = "-o";
@@ -9868,7 +9868,7 @@ void LoadCutScene(const char *filename)
     if (cutscene_file != NULL)
     {
         i = cutscenes;
-        fread(&csbrightness[i], sizeof(int), 1, cutscene_file);
+        (void)fread(&csbrightness[i], sizeof(int), 1, cutscene_file);
         c =	fread(cutscene[i], sizeof(char), MAXCSLENGTH, cutscene_file);
         if (c > 0)
         {
@@ -13244,7 +13244,7 @@ int InputReffer(char *extension, int setfps)
         return(0);
     }
 
-    fgets(line, sizeof(line), raw); // Read first line
+    (void)fgets(line, sizeof(line), raw); // Read first line
 
     frames = 0;
     if (strlen(line) > 27)
@@ -13263,7 +13263,7 @@ int InputReffer(char *extension, int setfps)
             sage_framenumber_bug = false;
     }
     reffer_count = -1;
-    fgets(line, sizeof(line), raw); // Skip second line
+    (void)fgets(line, sizeof(line), raw); // Skip second line
     while (fgets(line, sizeof(line), raw) != NULL && strlen(line) > 1)
     {
         if (line[strlen(line)-1] != '\n')
@@ -13884,9 +13884,9 @@ again:
         Debug(0, "Something went wrong... Exiting...\n");
         exit(22);
     }
-    fgets(line, sizeof(line), in_file); // Skip first line
+    (void)fgets(line, sizeof(line), in_file); // Skip first line
     if (strcmp(line,"sep=,\n")==0)
-        fgets(line, sizeof(line), in_file); // Skip second line
+        (void)fgets(line, sizeof(line), in_file); // Skip second line
     t = 0.0;
     if (line[85] == ';') line [85] = '+';
     if (strlen(line) > 85)
@@ -14616,7 +14616,8 @@ void AddXDS(unsigned char hi, unsigned char lo)
                     if (strncmp((const char*) XDS_block[XDS_block_count].name, (const char*)&XDSbuf[2], n) != 0)
                     {
                         Add_XDS_block();
-                        strncpy(XDS_block[XDS_block_count].name, (const char*) &XDSbuf[2], n);
+                        strncpy(XDS_block[XDS_block_count].name, (const char*) &XDSbuf[2], n - 1);
+                        XDS_block[XDS_block_count].name[n - 1] = '\0';
                     }
                     Debug(10, "XDS[%i]: Program Name: %s\n", framenum, &XDSbuf[2]);
 //		XDS_block[XDS_block_count].name[0] = 0;
@@ -15892,7 +15893,7 @@ void BuildCommListAsYouGo(void)
             }
             if (output_edl)
             {
-                sprintf(filename, "%s.edl", outbasename);
+                snprintf(filename, sizeof(filename),"%s.edl", outbasename);
                 edl_file = myfopen(filename, "wb");
                 if (!edl_file)
                 {
@@ -15907,7 +15908,7 @@ void BuildCommListAsYouGo(void)
             }
             if (output_live)
             {
-                sprintf(filename, "%s.live", outbasename);
+                snprintf(filename, sizeof(filename),"%s.live", outbasename);
                 live_file = myfopen(filename, "wb");
                 if (!live_file)
                 {
@@ -15923,7 +15924,7 @@ void BuildCommListAsYouGo(void)
             dvrmstb_file = 0;
             if (output_dvrmstb)
             {
-                sprintf(filename, "%s.xml", outbasename);
+                snprintf(filename, sizeof(filename),"%s.xml", outbasename);
                 dvrmstb_file = myfopen(filename, "w");
                 if (dvrmstb_file)
                 {
@@ -16032,7 +16033,7 @@ void BuildCommListAsYouGo(void)
 
             if (output_incommercial)
             {
-                sprintf(filename, "%s.incommercial", workbasename);
+                snprintf(filename, sizeof(filename),"%s.incommercial", workbasename);
                 incommercial_file = myfopen(filename, "w");
                 if (!incommercial_file)
                 {
@@ -16190,7 +16191,7 @@ void dump_audio_start()
     if (!output_demux) return;
     if (!dump_audio_file)
     {
-        sprintf(temp, "%s.mp2", workbasename);
+        snprintf(temp, sizeof(temp),"%s.mp2", workbasename);
         dump_audio_file = myfopen(temp, "wb");
     }
 }
@@ -16212,7 +16213,7 @@ void dump_video_start()
     if (!output_demux) return;
     if (!dump_video_file)
     {
-        sprintf(temp, "%s.m2v", workbasename);
+        snprintf(temp, sizeof(temp),"%s.m2v", workbasename);
         dump_video_file = myfopen(temp, "wb");
     }
 }
@@ -16248,12 +16249,12 @@ void dump_data(char *start, int length)
     if (!length) return;
     if (!dump_data_file)
     {
-        sprintf(temp, "%s.data", workbasename);
+        snprintf(temp, sizeof(temp),"%s.data", workbasename);
         dump_data_file = myfopen(temp, "wb");
     }
     if (length > 1900)
         return;
-    sprintf(temp, "%7d:%4d",framenum_real, length);
+    snprintf(temp, sizeof(temp),"%7d:%4d",framenum_real, length);
     for (i=0; i<length; i++)
         temp[i+12] = start[i] & 0xff;
     fwrite(temp, length+12, 1, dump_data_file);
