@@ -6361,7 +6361,7 @@ void OpenOutputFiles()
             }
             else
             {
-                (void)_getcwd(cwd, 256);
+                _getcwd(cwd, 256);
                 fprintf(videoredo_file, "<Version>2\n<Filename>%s%c%s\n", cwd, PATH_SEPARATOR, mpegfilename);
             }
             if (is_h264)
@@ -6411,7 +6411,7 @@ void OpenOutputFiles()
             }
             else
             {
-                (void)_getcwd(cwd, 256);
+                _getcwd(cwd, 256);
                 fprintf(videoredo3_file, "<VideoReDoProject Version=\"3\">\n<Filename>%s%c%s</Filename><CutList>\n", cwd, PATH_SEPARATOR, EscapeXmlFilename(mpegfilename));
             }
 //              if (is_h264) {
@@ -6457,7 +6457,7 @@ void OpenOutputFiles()
             }
             else
             {
-                (void)_getcwd(cwd, 256);
+                _getcwd(cwd, 256);
                 snprintf(tempstr, sizeof(tempstr),"%s%c%s", cwd, PATH_SEPARATOR, inbasename);
             }
             fprintf(cuttermaran_file, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
@@ -6485,7 +6485,7 @@ void OpenOutputFiles()
             }
             else
             {
-                (void)_getcwd(cwd, 256);
+                _getcwd(cwd, 256);
                 snprintf(tempstr, sizeof(tempstr),"%s%c%s", cwd, PATH_SEPARATOR, inbasename);
             }
             fprintf(vcf_file, "VirtualDub.video.SetMode(0);\nVirtualDub.subset.Clear();\n");
@@ -6510,7 +6510,7 @@ void OpenOutputFiles()
             }
             else
             {
-                (void)_getcwd(cwd, 256);
+                _getcwd(cwd, 256);
                 snprintf(tempstr, sizeof(tempstr),"%s%c%s", cwd, PATH_SEPARATOR, inbasename);
             }
 //			fprintf(vdr_file, "VirtualDub.video.SetMode(0);\nVirtualDub.subset.Clear();\n");
@@ -8147,8 +8147,8 @@ bool OutputCleanMpg()
                     j=0;
                 else
                 {
-                    (void)_write(outf, Buf, j);
-                    (void)_write(outf, MPEG2SysHdr, sizeof(MPEG2SysHdr));
+                    if (_write(outf, Buf, j) < 0) {}
+                    if (_write(outf, MPEG2SysHdr, sizeof(MPEG2SysHdr)) < 0) {}
                 }
             }
 
@@ -9868,7 +9868,8 @@ void LoadCutScene(const char *filename)
     if (cutscene_file != NULL)
     {
         i = cutscenes;
-        (void)fread(&csbrightness[i], sizeof(int), 1, cutscene_file);
+        if (fread(&csbrightness[i], sizeof(int), 1, cutscene_file) != 1)
+            Debug(1, "Warning: failed to read cutscene brightness\n");
         c =	fread(cutscene[i], sizeof(char), MAXCSLENGTH, cutscene_file);
         if (c > 0)
         {
@@ -13244,7 +13245,7 @@ int InputReffer(char *extension, int setfps)
         return(0);
     }
 
-    (void)fgets(line, sizeof(line), raw); // Read first line
+    if (!fgets(line, sizeof(line), raw)) return 0; // Read first line
 
     frames = 0;
     if (strlen(line) > 27)
@@ -13263,7 +13264,7 @@ int InputReffer(char *extension, int setfps)
             sage_framenumber_bug = false;
     }
     reffer_count = -1;
-    (void)fgets(line, sizeof(line), raw); // Skip second line
+    if (!fgets(line, sizeof(line), raw)) return 0; // Skip second line
     while (fgets(line, sizeof(line), raw) != NULL && strlen(line) > 1)
     {
         if (line[strlen(line)-1] != '\n')
@@ -13884,9 +13885,9 @@ again:
         Debug(0, "Something went wrong... Exiting...\n");
         exit(22);
     }
-    (void)fgets(line, sizeof(line), in_file); // Skip first line
+    if (!fgets(line, sizeof(line), in_file)) return; // Skip first line
     if (strcmp(line,"sep=,\n")==0)
-        (void)fgets(line, sizeof(line), in_file); // Skip second line
+        if (!fgets(line, sizeof(line), in_file)) return; // Skip second line
     t = 0.0;
     if (line[85] == ';') line [85] = '+';
     if (strlen(line) > 85)

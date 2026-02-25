@@ -131,7 +131,7 @@ int myremove(char * f);
 #define _close close
 #define _cprintf printf
 #define _flushall() fflush(NULL)
-#define _getcwd(x, y) getcwd(x, y)
+#define _getcwd(x, y) do { if (getcwd(x, y)) {} } while(0)
 #define Sleep(x) usleep((x)*1000L)
 int min(int i,int j);
 int max(int i,int j);
